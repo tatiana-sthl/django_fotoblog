@@ -1,7 +1,16 @@
+from dataclasses import fields
 from re import T
 from django import forms
+from django.contrib.auth import get_user_model
 
 from . import models
+
+User = get_user_model()
+
+class FollowerUsersForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["follows"]
 
 class PhotoForm(forms.ModelForm):
     class Meta:

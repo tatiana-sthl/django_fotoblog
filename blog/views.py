@@ -78,6 +78,7 @@ def blog_and_photo_upload(request):
             blog.author = request.user
             blog.photo = photo
             blog.save()
+            blog.contributors.add(request.user, through_defaults={"contribution": "Auteur principale"})
             return redirect('home')       
     context = {
         "blog_form": blog_form,
@@ -91,3 +92,13 @@ def home(request):
     photos = models.Photo.objects.all()
     blogs = models.Blog.objects.all()
     return render(request, "blog/home.html", context={"photos": photos, "blogs": blogs})
+
+@login_required
+def follow_users(request):
+    form = forms.FollowerUsersForm(instance=request.user)
+    if request.method == "POST":
+        form = forms.FollowerUsersForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect("home")
+    return render(request, "blog/follow_users_form.html", context={"form": form})
