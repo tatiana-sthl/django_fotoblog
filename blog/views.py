@@ -5,8 +5,26 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, permission_required
 from django.forms import formset_factory
 from django.db.models import Q
+from django.core.paginator import Paginator
 
 from . import forms, models
+
+@login_required
+def home(request):
+    blogs = models.Blog.objects.filter(Q(contributors__in=request.user.follows.all()) | Q(starred=True))
+    photos = models.Photo.objects.filter(uploader__in=request.user.follows.all()).exclude(blog__in=blogs)
+    blogs_and_photos = sorted(
+        chain(blogs, photos),
+        key=lambda instance: instance.date_created,
+        reverse=True
+    )
+
+    paginator = Paginator(blogs_and_photos, 6)
+
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+    context = {"page_obj": page_obj}
+    return render(request, "blog/home.html", context=context)
 
 @login_required
 @permission_required("blog.add_photo")
@@ -91,18 +109,6 @@ def blog_and_photo_upload(request):
 
 
 @login_required
-def home(request):
-    blogs = models.Blog.objects.filter(Q(contributors__in=request.user.follows.all()) | Q(starred=True))
-    photos = models.Photo.objects.filter(uploader__in=request.user.follows.all()).exclude(blog__in=blogs)
-    blogs_and_photos = sorted(
-        chain(blogs, photos),
-        key=lambda instance: instance.date_created,
-        reverse=True
-    )
-    context = {"blogs_and_photos": blogs_and_photos}
-    return render(request, "blog/home.html", context=context)
-
-@login_required
 def follow_users(request):
     form = forms.FollowerUsersForm(instance=request.user)
     if request.method == "POST":
@@ -114,5 +120,8 @@ def follow_users(request):
 
 def photo_feed(request):
     photos = models.Photo.objects.filter(uploader__in=request.user.follows.all()).order_by("-date_created")
+    paginator = Paginator(photos, 6)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     context = {"photos" : photos}
     return render(request, "blog/photo_feed.html", context=context)
